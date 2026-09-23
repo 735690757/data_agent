@@ -3,6 +3,48 @@
 # @Author : KarryLiu
 # File : column_qdrant_repo
 # @Project : data_agent
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.grpc import VectorParams, Distance
+from qdrant_client.http.models import PointStruct
+
+from app.conf.app_config import app_config
+
+
 class ColumnQdrantRepo:
-    def __init__(self, qdrant_client):
+    collection_name = "column_info_collection"
+
+    def __init__(self, qdrant_client: AsyncQdrantClient):
         self.qdrant_client = qdrant_client
+
+    async def ensure_collection(self):
+        if not await self.qdrant_client.collection_exists(collection_name=self.collection_name):
+            await self.qdrant_client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=app_config.qdrant.embedding_size,
+                    distance=Distance.Cosine
+                )
+            )
+
+    async def upsert(self, ids: list[str], embeddings: list[list[float]], payloads: list[dict], batch_size: int = 10):
+        """
+            await client.upsert(
+            collection_name="test_collection_async",
+            wait=True,
+            points=[
+                PointStruct(id=1, vector=[0.05, 0.61, 0.76, 0.74], payload={"city": "Berlin"}),
+            ],
+        )
+        """
+        points: list[PointStruct] = [
+            PointStruct(id=id, vector=embedding, payload=payload)
+            for (id, embedding, payload) in zip(ids, embeddings, payloads)
+        ]
+
+        for i in range(0, len(points), batch_size):
+            batch_points = points[i:i + batch_size]
+
+            await self.qdrant_client.upsert(
+                collection_name=self.collection_name,
+                points=batch_points
+            )

@@ -3,6 +3,8 @@
 # @Author : KarryLiu
 # File : value_es_repo
 # @Project : data_agent
+from dataclasses import asdict
+
 from elasticsearch import AsyncElasticsearch
 
 
@@ -27,3 +29,19 @@ class ValueESRepo:
                 index=self.index_name,
                 mappings=self.index_mappings
             )
+
+    async def index(self, value_infos, batch_size=20):
+        for i in range(0, len(value_infos), batch_size):
+            batch = value_infos[i:i + batch_size]
+
+            batch_operations = []
+
+            for value_info in batch:
+                batch_operations.append({
+                    "index": {
+                        "_index": self.index_name,
+                    }
+                })
+                batch_operations.append(asdict(value_info))
+
+            await self.client.bulk(operations=batch_operations)

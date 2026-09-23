@@ -1,24 +1,22 @@
 # _*_ coding : utf-8 _*_
-# @Time : 2026/9/21 15:50
+# @Time : 2026/9/23 14:39
 # @Author : KarryLiu
-# File : column_qdrant_repo
+# File : metric_qdrant_repo
 # @Project : data_agent
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.http.models import VectorParams, Distance
-from qdrant_client.http.models import PointStruct
+from qdrant_client.http.models import VectorParams, Distance, PointStruct
 
 from app.conf.app_config import app_config
-from app.entities.column_info import ColumnInfo
 
 
-class ColumnQdrantRepo:
-    collection_name = "column_info_collection"
+class MetricQdrantRepo:
+    collection_name = "metric_collection"
 
     def __init__(self, qdrant_client: AsyncQdrantClient):
         self.qdrant_client = qdrant_client
 
     async def ensure_collection(self):
-        if not await self.qdrant_client.collection_exists(collection_name=self.collection_name):
+        if not await self.qdrant_client.collection_exists(self.collection_name):
             await self.qdrant_client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(
@@ -50,11 +48,3 @@ class ColumnQdrantRepo:
                 points=batch_points
             )
 
-    async def search(self, embedding_vector: list[float], score_threshold: float, limit: int = 10):
-        result = await self.qdrant_client.query_points(
-            collection_name=self.collection_name,
-            query=embedding_vector,
-            score_threshold=score_threshold,
-            limit=limit
-        )
-        return [ColumnInfo(**point.payload) for point in result.points]

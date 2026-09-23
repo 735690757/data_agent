@@ -22,8 +22,8 @@ class DWMySQLRepo:
         result_dict = result.mappings().fetchall()
         return {row['Field']: row['Type'] for row in result_dict}
 
-    async def get_column_examples(self, table_name, col_name):
-        sql = f"select distinct {col_name} from {table_name} limit 10;"
+    async def get_column_examples(self, table_name, col_name, limit=10):
+        sql = f"select distinct {col_name} from {table_name} limit {limit};"
         result = await self.session.execute(text(sql))
         result_dict = result.fetchall()
         return [row[0] for row in result_dict]

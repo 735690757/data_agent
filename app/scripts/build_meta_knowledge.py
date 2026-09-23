@@ -16,6 +16,7 @@ from app.repositories.es.value_es_repo import ValueESRepo
 from app.repositories.mysql.dw.dw_mysql_repo import DWMySQLRepo
 from app.repositories.mysql.meta.meta_mysql_repo import MetaMySQLRepo
 from app.repositories.qdrant.column_qdrant_repo import ColumnQdrantRepo
+from app.repositories.qdrant.metric_qdrant_repo import MetricQdrantRepo
 from app.services.meta_knowledge_service import MetaKnowledgeService
 
 
@@ -26,6 +27,7 @@ async def build(config_path: Path):
     embedding_client_manager.init()
     es_client_manager.init()
 
+
     async with (
         meta_mysql_client_manager.session_factory() as meta_session,
         dw_mysql_client_manager.session_factory() as dw_session
@@ -33,6 +35,7 @@ async def build(config_path: Path):
         meta_mysql_repo = MetaMySQLRepo(meta_session)
         dw_mysql_repo = DWMySQLRepo(dw_session)
         column_qdrant_repo = ColumnQdrantRepo(qdrant_client_manager.client)
+        metric_qdrant_repo = MetricQdrantRepo(qdrant_client_manager.client)
         value_es_repo = ValueESRepo(es_client_manager.client)
 
         meta_knowledge_service = MetaKnowledgeService(
@@ -40,6 +43,7 @@ async def build(config_path: Path):
             dw_mysql_repo=dw_mysql_repo,
             column_qdrant_repo=column_qdrant_repo,
             embedding_client=embedding_client_manager.client,
+            metric_qdrant_repo=metric_qdrant_repo,
             value_es_repo=value_es_repo
         )
         await meta_knowledge_service.build(config_path)

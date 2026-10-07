@@ -24,9 +24,15 @@ from app.agent.nodes.validate_sql import validate_sql
 
 from app.agent.state import DataAgentState
 from app.clients.embedding_client_mamager import embedding_client_manager
+from app.clients.es_client_manager import es_client_manager
+from app.clients.mysql_client_mamager import meta_mysql_client_manager, dw_mysql_client_manager
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.repositories.es.value_es_repo import ValueESRepo
+from app.repositories.mysql.dw.dw_mysql_repo import DWMySQLRepo
+from app.repositories.mysql.meta.meta_mysql_repo import MetaMySQLRepo
 from app.repositories.qdrant import column_qdrant_repo
 from app.repositories.qdrant.column_qdrant_repo import ColumnQdrantRepo
+from app.repositories.qdrant.metric_qdrant_repo import MetricQdrantRepo
 
 graph_builder = StateGraph(
     state_schema=DataAgentState,
@@ -79,23 +85,39 @@ if __name__ == '__main__':
 
         qdrant_client_manager.init()
         embedding_client_manager.init()
+        es_client_manager.init()
+        meta_mysql_client_manager.init()
+        dw_mysql_client_manager.init()
 
-        column_qdrant_repo = ColumnQdrantRepo(qdrant_client_manager.client)
+        async with meta_mysql_client_manager.session_factory() as meta_session, dw_mysql_client_manager.session_factory() as dw_session:
+            meta_mysql_repo = MetaMySQLRepo(meta_session)
+            dw_mysql_repo = DWMySQLRepo(dw_session)
 
-        async for chunk in graph.astream(
-                input=DataAgentState(
-                    error=None,
-                    query="统计华北地区销售总额"
-                ),
-                context=DataAgentContext(
-                    column_qdrant_repo=column_qdrant_repo,
-                    embedding_client=embedding_client_manager.client
-                ),
-                stream_mode='custom',
-        ):
-            print(chunk)
+            column_qdrant_repo = ColumnQdrantRepo(qdrant_client_manager.client)
+            metric_qdrant_repo = MetricQdrantRepo(qdrant_client_manager.client)
+            value_es_repo = ValueESRepo(es_client_manager.client)
+
+            async for chunk in graph.astream(
+                    input=DataAgentState(
+                        error=None,
+                        query="统计华北地区销售总额"
+                    ),
+                    context=DataAgentContext(
+                        column_qdrant_repo=column_qdrant_repo,
+                        metric_qdrant_repo=metric_qdrant_repo,
+                        value_es_repo=value_es_repo,
+                        embedding_client=embedding_client_manager.client,
+                        meta_mysql_repo=meta_mysql_repo,
+                        dw_mysql_repo=dw_mysql_repo
+                    ),
+                    stream_mode='custom',
+            ):
+                print(chunk)
 
         await qdrant_client_manager.close()
+        await es_client_manager.close()
+        await meta_mysql_client_manager.close()
+        await dw_mysql_client_manager.close()
 
 
     asyncio.run(test())

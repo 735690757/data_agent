@@ -3,10 +3,23 @@
 # @Author : KarryLiu
 # File : main
 # @Project : data_agent
-from loguru import logger
+import uuid
 
-logger.info("Starting the application...")
+from fastapi import FastAPI, Request
 
-logger.warning("Warning: This is a warning message.")
+from app.api.life_span import lifespan
+from app.api.routers.query_router import query_router
+from app.core.context import request_id_ctx_var
 
-logger.error("Error: This is an error message.")
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(router=query_router, tags=["Data Agent"])
+
+
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    request_id = uuid.uuid4()
+    request_id_ctx_var.set(request_id)
+    response = await call_next(request)
+    return response

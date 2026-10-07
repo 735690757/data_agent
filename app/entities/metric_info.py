@@ -8,8 +8,8 @@ from dataclasses import dataclass
 @dataclass
 class MetricInfo:
     id: str
-    name: str | None
-    description: str | None
-    relevant_columns: list[str] | None
-    alias: list[str] | None
+    name: str
+    description: str
+    relevant_columns: list[str]
+    alias: list[str]
 

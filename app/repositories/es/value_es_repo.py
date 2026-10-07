@@ -7,6 +7,8 @@ from dataclasses import asdict
 
 from elasticsearch import AsyncElasticsearch
 
+from app.entities.value_info import ValueInfo
+
 
 class ValueESRepo:
     index_name = "value_index"
@@ -45,3 +47,19 @@ class ValueESRepo:
                 batch_operations.append(asdict(value_info))
 
             await self.client.bulk(operations=batch_operations)
+
+    async def search(self, keyword: str, score_threshold: float, limit: int):
+        # 这里应该使用 Elasticsearch 的搜索功能，而不是 Qdrant
+        result = await self.client.search(
+            index=self.index_name,
+            query={
+                "match": {
+                    "value": {
+                        "query": keyword,
+                    }
+                }
+            },
+            size=limit,
+            min_score=score_threshold
+        )
+        return [ValueInfo(**hit["_source"]) for hit in result["hits"]["hits"]]
